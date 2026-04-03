@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>News Blog + Donate Compute Widget</title>
+		<style>
+			:root {
+				--bg: #0e1326;
+				--panel: #171f3b;
+				--line: #2a3a66;
+				--text: #f1f4ff;
+				--muted: #98a7d1;
+				--accent: #27d08b;
+			}
+
+			body {
+				margin: 0;
+				font-family: 'Manrope', 'Segoe UI', sans-serif;
+				background: linear-gradient(145deg, #0c1124, #141d38 55%, #11182e);
+				color: var(--text);
+			}
+
+			.page {
+				max-width: 920px;
+				margin: 0 auto;
+				padding: 1.25rem;
+			}
+
+			.article {
+				background: #f8faff;
+				color: #1d2234;
+				border-radius: 16px;
+				padding: 1.5rem;
+			}
+
+			.widget {
+				margin-top: 1rem;
+				background: var(--panel);
+				border: 1px solid var(--line);
+				border-radius: 16px;
+				padding: 1rem;
+			}
+
+			.row {
+				display: flex;
+				flex-wrap: wrap;
+				align-items: center;
+				gap: 0.8rem;
+			}
+
+			.pill {
+				border-radius: 999px;
+				border: 1px solid var(--line);
+				padding: 0.3rem 0.75rem;
+				font-size: 0.85rem;
+				color: var(--muted);
+			}
+
+			.btn {
+				background: var(--accent);
+				border: 0;
+				border-radius: 10px;
+				color: #041a12;
+				padding: 0.55rem 0.85rem;
+				font-weight: 700;
+				cursor: pointer;
+			}
+
+			#status {
+				color: var(--muted);
+				margin-top: 0.7rem;
+			}
+		</style>
+	</head>
+	<body>
+		<main class="page">
+			<article class="article">
+				<h1>Synthetic Meteors Spotted Above Earth Orbit</h1>
+				<p>
+					Citizen science is becoming part of daily browsing. This page includes
+					an opt-in compute widget that helps assemble a Mandelbrot render for
+					the GridForGood hackathon demo.
+				</p>
+			</article>
+
+			<section class="widget">
+				<div class="row">
+					<button class="btn" id="toggle-compute">Enable Donate Compute</button>
+					<span class="pill">My Lifetime Chunks: <strong id="donated-chunks">0</strong></span>
+					<span class="pill">Node: <strong id="node-id">disconnected</strong></span>
+				</div>
+				<div id="status">Idle. Opt in to donate compute.</div>
+			</section>
+		</main>
+
+		<script type="module" src="./widget.js"></script>
+	</body>
+</html>

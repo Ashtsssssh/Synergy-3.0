@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>GridForGood Live Dashboard</title>
+		<style>
+			:root {
+				--bg: #0a0f1f;
+				--card: #131b33;
+				--line: #243153;
+				--text: #eef3ff;
+				--muted: #96a6d8;
+				--accent: #4ade80;
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			body {
+				margin: 0;
+				min-height: 100vh;
+				font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+				color: var(--text);
+				background:
+					radial-gradient(circle at 20% 15%, #1b2b66 0%, transparent 45%),
+					radial-gradient(circle at 80% 0%, #173c4f 0%, transparent 40%),
+					var(--bg);
+				display: grid;
+				place-items: center;
+				padding: 1rem;
+			}
+
+			.layout {
+				width: min(1200px, 100%);
+				display: grid;
+				gap: 1rem;
+				grid-template-columns: 1fr;
+			}
+
+			.stats {
+				display: grid;
+				grid-template-columns: repeat(3, minmax(0, 1fr));
+				gap: 1rem;
+			}
+
+			.card {
+				background: linear-gradient(140deg, #1a2550, var(--card));
+				border: 1px solid var(--line);
+				border-radius: 16px;
+				padding: 1rem;
+			}
+
+			.label {
+				color: var(--muted);
+				font-size: 0.9rem;
+			}
+
+			.value {
+				margin-top: 0.35rem;
+				font-size: 1.8rem;
+				font-weight: 700;
+			}
+
+			.canvas-card {
+				padding: 1rem;
+				border-radius: 16px;
+				background: #070b16;
+				border: 1px solid var(--line);
+			}
+
+			#mandelbrot {
+				display: block;
+				width: 100%;
+				max-width: 960px;
+				aspect-ratio: 1 / 1;
+				margin: 0 auto;
+				background: #02040a;
+				border: 1px solid #1d2a4a;
+			}
+
+			@media (max-width: 720px) {
+				.stats {
+					grid-template-columns: 1fr;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<main class="layout">
+			<section class="stats">
+				<article class="card">
+					<div class="label">Active Nodes (last 20s)</div>
+					<div class="value" id="active-nodes">0</div>
+				</article>
+				<article class="card">
+					<div class="label">Chunks Processed</div>
+					<div class="value" id="chunks-processed">0</div>
+				</article>
+				<article class="card">
+					<div class="label">Completion</div>
+					<div class="value" id="completion">0%</div>
+				</article>
+			</section>
+
+			<section class="canvas-card">
+				<canvas id="mandelbrot" width="960" height="960"></canvas>
+			</section>
+		</main>
+
+		<script type="module" src="./dashboard.js"></script>
+	</body>
+</html>
