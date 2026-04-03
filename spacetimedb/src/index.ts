@@ -228,8 +228,8 @@ export const init = spacetimedb.init(ctx => {
   seedChunkQueue(ctx, defaultConfig);
 });
 
-export const onConnect = spacetimedb.clientConnected(ctx => {
-  markNodeAlive(ctx);
+export const onConnect = spacetimedb.clientConnected(_ctx => {
+  // Passive observers should not count as active compute nodes.
 });
 
 export const onDisconnect = spacetimedb.clientDisconnected(_ctx => {
