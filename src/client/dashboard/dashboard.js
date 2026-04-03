@@ -13,6 +13,23 @@ const completionEl = document.getElementById('completion');
 
 const drawnChunks = new Set();
 
+function clearCanvas() {
+	context.fillStyle = '#02040a';
+	context.fillRect(0, 0, canvas.width, canvas.height);
+	drawnChunks.clear();
+}
+
+function clearChunk(chunk) {
+	context.fillStyle = '#02040a';
+	context.fillRect(
+		Number(chunk.tileX) * Number(chunk.width),
+		Number(chunk.tileY) * Number(chunk.height),
+		Number(chunk.width),
+		Number(chunk.height)
+	);
+	drawnChunks.delete(chunk.chunkId.toString());
+}
+
 function unwrapOption(value) {
 	if (value === undefined || value === null) {
 		return undefined;
@@ -98,17 +115,33 @@ DbConnection.builder()
 	.withUri(SPACETIMEDB_URI)
 	.withDatabaseName(DB_NAME)
 	.onConnect(conn => {
+		clearCanvas();
+
 		conn.db.chunkQueue.onInsert((_ctx, row) => {
 			if (row.status === 'completed') {
 				paintChunk(row);
+			} else {
+				clearChunk(row);
 			}
 			updateMetrics(conn);
 		});
 
-		conn.db.chunkQueue.onUpdate((_ctx, _oldRow, row) => {
+		conn.db.chunkQueue.onUpdate((_ctx, oldRow, row) => {
 			if (row.status === 'completed') {
 				paintChunk(row);
+			} else if (oldRow.status === 'completed' || drawnChunks.has(row.chunkId.toString())) {
+				clearChunk(row);
 			}
+			updateMetrics(conn);
+		});
+
+		conn.db.gridConfig.onInsert(() => {
+			clearCanvas();
+			updateMetrics(conn);
+		});
+
+		conn.db.gridConfig.onUpdate(() => {
+			clearCanvas();
 			updateMetrics(conn);
 		});
 

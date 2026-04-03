@@ -4,7 +4,18 @@ const SPACETIMEDB_URI = window.GRIDFORGOOD_URI ?? 'wss://maincloud.spacetimedb.c
 const DB_NAME = window.GRIDFORGOOD_DB_NAME ?? 'hack';
 const DONATED_KEY = 'gridforgood_donated_chunks';
 
+const RESET_GRID_DEFAULTS = {
+	cols: 40,
+	rows: 40,
+	maxIterations: 500,
+	reMin: -2.0,
+	reMax: 1.0,
+	imMin: -1.2,
+	imMax: 1.2,
+};
+
 const toggleButton = document.getElementById('toggle-compute');
+const resetGridButton = document.getElementById('reset-grid');
 const donatedChunksEl = document.getElementById('donated-chunks');
 const nodeIdEl = document.getElementById('node-id');
 const statusEl = document.getElementById('status');
@@ -202,6 +213,21 @@ toggleButton.addEventListener('click', () => {
 		maybeClaimWork();
 	} else {
 		setStatus('Donate Compute paused.');
+	}
+});
+
+resetGridButton.addEventListener('click', () => {
+	if (!conn) {
+		setStatus('Cannot reset grid: not connected yet.');
+		return;
+	}
+
+	try {
+		conn.reducers.resetGrid(RESET_GRID_DEFAULTS);
+		setStatus('reset_grid submitted.');
+	} catch (error) {
+		console.error('reset_grid failed:', error);
+		setStatus('reset_grid failed. Check console.');
 	}
 });
 

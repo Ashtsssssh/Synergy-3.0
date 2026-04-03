@@ -67,6 +67,12 @@
 				cursor: pointer;
 			}
 
+			.btn-secondary {
+				background: transparent;
+				border: 1px solid var(--line);
+				color: var(--text);
+			}
+
 			#status {
 				color: var(--muted);
 				margin-top: 0.7rem;
@@ -87,6 +93,7 @@
 			<section class="widget">
 				<div class="row">
 					<button class="btn" id="toggle-compute">Enable Donate Compute</button>
+					<button class="btn btn-secondary" id="reset-grid">Reset Grid</button>
 					<span class="pill">My Lifetime Chunks: <strong id="donated-chunks">0</strong></span>
 					<span class="pill">Node: <strong id="node-id">disconnected</strong></span>
 				</div>
