@@ -1,7 +1,7 @@
 import { Identity } from 'spacetimedb';
 import { DbConnection, ErrorContext } from './module_bindings/index.js';
 
-const HOST = process.env.SPACETIMEDB_HOST ?? 'ws://localhost:3000';
+const HOST = process.env.SPACETIMEDB_HOST ?? 'wss://maincloud.spacetimedb.com';
 const DB_NAME = process.env.SPACETIMEDB_DB_NAME ?? 'gridforgood';
 
 DbConnection.builder()

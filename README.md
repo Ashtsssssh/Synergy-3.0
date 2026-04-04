@@ -95,10 +95,34 @@ If you serve `src/client` directly, `/module_bindings/index.js` will be unreacha
 
 ```html
 <script>
-  window.GRIDFORGOOD_URI = 'ws://localhost:3000';
+  window.GRIDFORGOOD_URI = 'wss://maincloud.spacetimedb.com';
   window.GRIDFORGOOD_DB_NAME = 'gridforgood';
 </script>
 ```
+
+## Cloud Runbook
+
+This repo is already configured to target `maincloud` in `spacetime.json`, and the browser clients now default to `wss://maincloud.spacetimedb.com`.
+
+1. Publish the module to the shared database.
+
+```bash
+spacetime publish hack --clear-database -y --module-path spacetimedb
+```
+
+2. Serve the static files.
+
+```bash
+npx serve src -l 4173
+```
+
+3. Open the pages.
+
+- Launcher: `http://localhost:4173/client/index.html`
+- Edge node: `http://localhost:4173/client/image-render/index.html`
+- Server dashboard: `http://localhost:4173/client/dashboard/index.html`
+
+If you want to force a different backend from the browser, set `window.GRIDFORGOOD_URI` before loading the scripts.
 
 ## Hackathon Priority Notes
 

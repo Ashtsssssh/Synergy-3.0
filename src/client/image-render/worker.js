@@ -1,21 +1,38 @@
 let wasmInstance = null;
+let wasmLoadPromise = null;
+const textEncoder = new TextEncoder();
+
+function sleep(ms) {
+	return new Promise(resolve => {
+		setTimeout(resolve, ms);
+	});
+}
 
 async function loadWasm() {
 	if (wasmInstance) {
 		return wasmInstance;
 	}
-
-	try {
-		const wasmUrl = new URL('../wasm/math.wasm', import.meta.url);
-		const response = await fetch(wasmUrl);
-		const bytes = await response.arrayBuffer();
-		const result = await WebAssembly.instantiate(bytes, {});
-		wasmInstance = result.instance;
-		return wasmInstance;
-	} catch {
-		wasmInstance = null;
-		return null;
+	if (wasmLoadPromise) {
+		return wasmLoadPromise;
 	}
+
+	wasmLoadPromise = (async () => {
+		try {
+			const wasmUrl = new URL('../wasm/math.wasm', import.meta.url);
+			const response = await fetch(wasmUrl);
+			const bytes = await response.arrayBuffer();
+			const result = await WebAssembly.instantiate(bytes, {});
+			wasmInstance = result.instance;
+			return wasmInstance;
+		} catch {
+			wasmInstance = null;
+			return null;
+		} finally {
+			wasmLoadPromise = null;
+		}
+	})();
+
+	return wasmLoadPromise;
 }
 
 function palette(iteration, maxIterations) {
@@ -30,7 +47,7 @@ function palette(iteration, maxIterations) {
 	return [r, g, b, 255];
 }
 
-function jsComputeChunk(payload) {
+function jsComputeMandelbrot(payload) {
 	const { minRe, maxRe, minIm, maxIm, width, height, maxIterations } = payload;
 	const pixels = new Array(width * height * 4);
 	const reStep = (maxRe - minRe) / width;
@@ -65,7 +82,7 @@ function jsComputeChunk(payload) {
 	return pixels;
 }
 
-function wasmComputeChunk(payload, instance) {
+function wasmComputeMandelbrot(payload, instance) {
 	const computeChunk = instance.exports.compute_chunk || instance.exports.computeChunk;
 	if (typeof computeChunk !== 'function') {
 		return null;
@@ -85,7 +102,6 @@ function wasmComputeChunk(payload, instance) {
 		if (Array.isArray(result)) {
 			return result;
 		}
-
 		if (result instanceof Uint8Array || result instanceof Uint8ClampedArray) {
 			return Array.from(result);
 		}
@@ -96,6 +112,32 @@ function wasmComputeChunk(payload, instance) {
 	return null;
 }
 
+function formatPin(value, length) {
+	return `${value}`.padStart(length, '0');
+}
+
+async function sha256Hex(input) {
+	const hashBuffer = await crypto.subtle.digest('SHA-256', textEncoder.encode(input));
+	const bytes = new Uint8Array(hashBuffer);
+	let out = '';
+	for (const byte of bytes) {
+		out += byte.toString(16).padStart(2, '0');
+	}
+	return out;
+}
+
+async function computePinChunk(payload) {
+	const targetHash = payload.targetHash.trim().toLowerCase();
+	for (let n = payload.rangeStart; n <= payload.rangeEnd; n += 1) {
+		const candidate = formatPin(n, payload.pinLength);
+		const hash = await sha256Hex(candidate);
+		if (hash === targetHash) {
+			return candidate;
+		}
+	}
+	return undefined;
+}
+
 self.onmessage = async event => {
 	const { type, payload } = event.data ?? {};
 	if (type !== 'compute') {
@@ -103,17 +145,42 @@ self.onmessage = async event => {
 	}
 
 	try {
-		const instance = await loadWasm();
-		const wasmPixels = instance ? wasmComputeChunk(payload, instance) : null;
-		const pixels = wasmPixels ?? jsComputeChunk(payload);
+		if (payload.taskKey === 'mandelbrot') {
+			const instance = await loadWasm();
+			const wasmPixels = instance ? wasmComputeMandelbrot(payload, instance) : null;
+			const pixels = wasmPixels ?? jsComputeMandelbrot(payload);
+			const delayMs = Math.max(0, Number(payload.demoDelayMs ?? 0));
+			if (delayMs > 0) {
+				await sleep(delayMs);
+			}
 
-		self.postMessage({
-			type: 'chunk-computed',
-			payload: {
-				chunkId: payload.chunkId,
-				pixels,
-			},
-		});
+			self.postMessage({
+				type: 'chunk-computed',
+				payload: {
+					taskKey: 'mandelbrot',
+					taskId: payload.taskId,
+					chunkId: payload.chunkId,
+					pixels,
+				},
+			});
+			return;
+		}
+
+		if (payload.taskKey === 'pin_guess') {
+			const foundPin = await computePinChunk(payload);
+			self.postMessage({
+				type: 'chunk-computed',
+				payload: {
+					taskKey: 'pin_guess',
+					taskId: payload.taskId,
+					chunkId: payload.chunkId,
+					foundPin,
+				},
+			});
+			return;
+		}
+
+		throw new Error(`Unsupported taskKey: ${payload.taskKey}`);
 	} catch (error) {
 		self.postMessage({
 			type: 'worker-error',

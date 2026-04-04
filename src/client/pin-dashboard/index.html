@@ -104,12 +104,16 @@
 
 			<section class="stats">
 				<article class="card">
-					<div class="label">Active Nodes (20s)</div>
+					<div class="label">Active Nodes (2s)</div>
 					<div class="value" id="active-nodes">0</div>
 				</article>
 				<article class="card">
 					<div class="label">Ranges Checked</div>
 					<div class="value" id="ranges-checked">0</div>
+				</article>
+				<article class="card">
+					<div class="label">Ranges In Progress</div>
+					<div class="value" id="ranges-in-progress">0</div>
 				</article>
 				<article class="card">
 					<div class="label">Search Completion</div>
@@ -122,11 +126,26 @@
 			</section>
 
 			<section class="panel">
+				<div class="label">Solved Result</div>
+				<ul>
+					<li>PIN: <strong id="found-pin" class="mono">pending</strong></li>
+					<li>Found By: <strong id="found-by" class="mono">pending</strong></li>
+					<li>Total Elapsed (reset to found): <strong id="solve-time">pending</strong></li>
+					<li>Active Compute Elapsed (first active range to found): <strong id="active-solve-time">pending</strong></li>
+				</ul>
+			</section>
+
+			<section class="panel">
+				<div class="label">Ranges Currently Processing</div>
+				<ul id="active-range-log"></ul>
+			</section>
+
+			<section class="panel">
 				<div class="label">Latest Completed Ranges</div>
 				<ul id="range-log"></ul>
 			</section>
 		</main>
 
-		<script type="module" src="./dashboard.js"></script>
+		<script type="module" src="/client/pin-dashboard/dashboard.js"></script>
 	</body>
 </html>

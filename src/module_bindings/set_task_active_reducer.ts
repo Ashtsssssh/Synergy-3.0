@@ -12,4 +12,5 @@ import {
 
 export default {
   taskId: __t.u32(),
+  isActive: __t.bool(),
 };

@@ -3,53 +3,64 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>News Blog + Donate Compute Widget</title>
+		<title>GridForGood Edge Node Dashboard</title>
 		<style>
 			:root {
-				--bg: #0e1326;
-				--panel: #171f3b;
-				--line: #2a3a66;
-				--text: #f1f4ff;
-				--muted: #98a7d1;
-				--accent: #27d08b;
+				--bg: #0f1024;
+				--panel: #1b1e3c;
+				--line: #31386e;
+				--text: #eef0ff;
+				--muted: #a4abd4;
+				--accent: #28d29a;
+			}
+
+			* {
+				box-sizing: border-box;
 			}
 
 			body {
 				margin: 0;
 				font-family: 'Manrope', 'Segoe UI', sans-serif;
-				background: linear-gradient(145deg, #0c1124, #141d38 55%, #11182e);
+				background:
+					radial-gradient(circle at 10% 10%, #2a315f 0%, transparent 35%),
+					radial-gradient(circle at 85% 0%, #0e4c3b 0%, transparent 35%),
+					var(--bg);
 				color: var(--text);
+				padding: 1rem;
 			}
 
 			.page {
-				max-width: 920px;
+				max-width: 980px;
 				margin: 0 auto;
-				padding: 1.25rem;
+				display: grid;
+				gap: 1rem;
 			}
 
-			.article {
-				background: #f8faff;
-				color: #1d2234;
-				border-radius: 16px;
-				padding: 1.5rem;
-			}
-
-			.widget {
-				margin-top: 1rem;
-				background: var(--panel);
+			.hero {
+				background: linear-gradient(145deg, #192247, var(--panel));
 				border: 1px solid var(--line);
 				border-radius: 16px;
 				padding: 1rem;
 			}
 
-			.row {
+			.hero h1 {
+				margin: 0;
+				font-size: 1.35rem;
+			}
+
+			.hero p {
+				margin: 0.55rem 0 0;
+				color: var(--muted);
+			}
+
+			.meta-row {
 				display: flex;
 				flex-wrap: wrap;
-				align-items: center;
-				gap: 0.8rem;
+				gap: 0.7rem;
 			}
 
 			.pill {
+				margin-top: 0.8rem;
 				border-radius: 999px;
 				border: 1px solid var(--line);
 				padding: 0.3rem 0.75rem;
@@ -57,50 +68,94 @@
 				color: var(--muted);
 			}
 
+			.task-list {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+				gap: 1rem;
+			}
+
+			.task-card {
+				background: #131735;
+				border: 1px solid var(--line);
+				border-radius: 14px;
+				padding: 1rem;
+			}
+
+			.task-card-active {
+				border-color: var(--accent);
+				box-shadow: 0 0 0 1px #1c9f75;
+			}
+
+			.task-head {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				gap: 0.5rem;
+			}
+
+			.task-head h3 {
+				margin: 0;
+				font-size: 1.05rem;
+			}
+
+			.task-meta {
+				margin-top: 0.6rem;
+				display: grid;
+				gap: 0.3rem;
+				color: var(--muted);
+				font-size: 0.9rem;
+			}
+
 			.btn {
-				background: var(--accent);
+				margin-top: 0.75rem;
 				border: 0;
 				border-radius: 10px;
-				color: #041a12;
-				padding: 0.55rem 0.85rem;
+				background: var(--accent);
+				padding: 0.5rem 0.8rem;
 				font-weight: 700;
+				color: #042118;
 				cursor: pointer;
 			}
 
-			.btn-secondary {
-				background: transparent;
-				border: 1px solid var(--line);
-				color: var(--text);
+			.empty {
+				border: 1px dashed var(--line);
+				border-radius: 12px;
+				padding: 1rem;
+				color: var(--muted);
 			}
 
 			#status {
 				color: var(--muted);
-				margin-top: 0.7rem;
+				font-size: 0.95rem;
 			}
 		</style>
 	</head>
 	<body>
 		<main class="page">
-			<article class="article">
-				<h1>Synthetic Meteors Spotted Above Earth Orbit</h1>
-				<p>
-					Citizen science is becoming part of daily browsing. This page includes
-					an opt-in compute widget that helps assemble a Mandelbrot render for
-					the GridForGood hackathon demo.
-				</p>
-			</article>
-
-			<section class="widget">
-				<div class="row">
-					<button class="btn" id="toggle-compute">Enable Donate Compute</button>
-					<button class="btn btn-secondary" id="reset-grid">Reset Grid</button>
+			<section class="hero">
+				<h1>Edge Node Dashboard</h1>
+				<p>Only tasks requesting help are listed. Pick one and contribute compute.</p>
+				<div class="meta-row">
+					<button class="btn" id="stop-contributing" disabled>Stop Contributing</button>
+				</div>
+				<div class="meta-row">
+					<span class="pill">
+						Mandelbrot Demo Delay:
+						<input id="demo-delay" type="range" min="0" max="2000" step="50" value="0" />
+						<strong id="demo-delay-value">0ms</strong>
+					</span>
+				</div>
+				<div class="meta-row">
 					<span class="pill">My Lifetime Chunks: <strong id="donated-chunks">0</strong></span>
+					<span class="pill">Synced Donated Chunks: <strong id="synced-donated-chunks">0</strong></span>
 					<span class="pill">Node: <strong id="node-id">disconnected</strong></span>
 				</div>
-				<div id="status">Idle. Opt in to donate compute.</div>
+				<p id="status">Idle. Select a task to contribute.</p>
 			</section>
+
+			<section class="task-list" id="task-list"></section>
 		</main>
 
-		<script type="module" src="./widget.js"></script>
+		<script type="module" src="/client/image-render/widget.js"></script>
 	</body>
 </html>

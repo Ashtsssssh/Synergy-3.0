@@ -7825,11 +7825,10 @@ function procedures(...args) {
 // src/module_bindings/heartbeat_reducer.ts
 var heartbeat_reducer_default = {};
 
-// src/module_bindings/request_pin_work_reducer.ts
-var request_pin_work_reducer_default = {};
-
 // src/module_bindings/request_work_reducer.ts
-var request_work_reducer_default = {};
+var request_work_reducer_default = {
+  taskId: t.u32()
+};
 
 // src/module_bindings/reset_grid_reducer.ts
 var reset_grid_reducer_default = {
@@ -7847,21 +7846,50 @@ var reset_pin_crack_reducer_default = {
   targetHash: t.string()
 };
 
-// src/module_bindings/submit_pin_result_reducer.ts
-var submit_pin_result_reducer_default = {
-  chunkId: t.u64(),
-  foundPin: t.option(t.string())
+// src/module_bindings/reset_task_reducer.ts
+var reset_task_reducer_default = {
+  taskId: t.u32()
+};
+
+// src/module_bindings/set_task_active_reducer.ts
+var set_task_active_reducer_default = {
+  taskId: t.u32(),
+  isActive: t.bool()
+};
+
+// src/module_bindings/set_task_help_reducer.ts
+var set_task_help_reducer_default = {
+  taskId: t.u32(),
+  requestHelp: t.bool()
 };
 
 // src/module_bindings/submit_result_reducer.ts
 var submit_result_reducer_default = {
+  taskId: t.u32(),
   chunkId: t.u64(),
-  pixelData: t.string()
+  resultData: t.option(t.string())
 };
 
-// src/module_bindings/chunk_queue_table.ts
-var chunk_queue_table_default = t.row({
+// src/module_bindings/grid_config_table.ts
+var grid_config_table_default = t.row({
+  id: t.u32().primaryKey(),
+  taskId: t.u32().name("task_id"),
+  cols: t.u32(),
+  rows: t.u32(),
+  maxIterations: t.u32().name("max_iterations"),
+  reMin: t.f64().name("re_min"),
+  reMax: t.f64().name("re_max"),
+  imMin: t.f64().name("im_min"),
+  imMax: t.f64().name("im_max"),
+  imageWidth: t.u32().name("image_width"),
+  imageHeight: t.u32().name("image_height"),
+  updatedAtMicros: t.u64().name("updated_at_micros")
+});
+
+// src/module_bindings/mandelbrot_chunk_queue_table.ts
+var mandelbrot_chunk_queue_table_default = t.row({
   chunkId: t.u64().primaryKey().name("chunk_id"),
+  taskId: t.u32().name("task_id"),
   status: t.string(),
   assignedNode: t.option(t.identity()).name("assigned_node"),
   tileX: t.u32().name("tile_x"),
@@ -7877,21 +7905,6 @@ var chunk_queue_table_default = t.row({
   updatedAtMicros: t.u64().name("updated_at_micros")
 });
 
-// src/module_bindings/grid_config_table.ts
-var grid_config_table_default = t.row({
-  id: t.u32().primaryKey(),
-  cols: t.u32(),
-  rows: t.u32(),
-  maxIterations: t.u32().name("max_iterations"),
-  reMin: t.f64().name("re_min"),
-  reMax: t.f64().name("re_max"),
-  imMin: t.f64().name("im_min"),
-  imMax: t.f64().name("im_max"),
-  imageWidth: t.u32().name("image_width"),
-  imageHeight: t.u32().name("image_height"),
-  updatedAtMicros: t.u64().name("updated_at_micros")
-});
-
 // src/module_bindings/node_status_table.ts
 var node_status_table_default = t.row({
   nodeId: t.identity().primaryKey().name("node_id"),
@@ -7902,6 +7915,7 @@ var node_status_table_default = t.row({
 // src/module_bindings/pin_chunk_queue_table.ts
 var pin_chunk_queue_table_default = t.row({
   chunkId: t.u64().primaryKey().name("chunk_id"),
+  taskId: t.u32().name("task_id"),
   status: t.string(),
   assignedNode: t.option(t.identity()).name("assigned_node"),
   rangeStart: t.u32().name("range_start"),
@@ -7915,6 +7929,7 @@ var pin_chunk_queue_table_default = t.row({
 // src/module_bindings/pin_crack_config_table.ts
 var pin_crack_config_table_default = t.row({
   id: t.u32().primaryKey(),
+  taskId: t.u32().name("task_id"),
   pinLength: t.u32().name("pin_length"),
   targetHash: t.string().name("target_hash"),
   totalCandidates: t.u32().name("total_candidates"),
@@ -7926,25 +7941,18 @@ var pin_crack_config_table_default = t.row({
   updatedAtMicros: t.u64().name("updated_at_micros")
 });
 
+// src/module_bindings/task_table.ts
+var task_table_default = t.row({
+  taskId: t.u32().primaryKey().name("task_id"),
+  taskKey: t.string().name("task_key"),
+  displayName: t.string().name("display_name"),
+  isActive: t.bool().name("is_active"),
+  requestHelp: t.bool().name("request_help"),
+  updatedAtMicros: t.u64().name("updated_at_micros")
+});
+
 // src/module_bindings/index.ts
 var tablesSchema = schema({
-  chunkQueue: table({
-    name: "chunk_queue",
-    indexes: [
-      { accessor: "chunk_queue_by_assigned_node", name: "chunk_queue_assigned_node_idx_btree", algorithm: "btree", columns: [
-        "assignedNode"
-      ] },
-      { accessor: "chunkId", name: "chunk_queue_chunk_id_idx_btree", algorithm: "btree", columns: [
-        "chunkId"
-      ] },
-      { accessor: "chunk_queue_by_status", name: "chunk_queue_status_idx_btree", algorithm: "btree", columns: [
-        "status"
-      ] }
-    ],
-    constraints: [
-      { name: "chunk_queue_chunk_id_key", constraint: "unique", columns: ["chunkId"] }
-    ]
-  }, chunk_queue_table_default),
   gridConfig: table({
     name: "grid_config",
     indexes: [
@@ -7956,6 +7964,26 @@ var tablesSchema = schema({
       { name: "grid_config_id_key", constraint: "unique", columns: ["id"] }
     ]
   }, grid_config_table_default),
+  mandelbrotChunkQueue: table({
+    name: "mandelbrot_chunk_queue",
+    indexes: [
+      { accessor: "mandelbrot_chunk_queue_by_assigned_node", name: "mandelbrot_chunk_queue_assigned_node_idx_btree", algorithm: "btree", columns: [
+        "assignedNode"
+      ] },
+      { accessor: "chunkId", name: "mandelbrot_chunk_queue_chunk_id_idx_btree", algorithm: "btree", columns: [
+        "chunkId"
+      ] },
+      { accessor: "mandelbrot_chunk_queue_by_status", name: "mandelbrot_chunk_queue_status_idx_btree", algorithm: "btree", columns: [
+        "status"
+      ] },
+      { accessor: "mandelbrot_chunk_queue_by_task_id", name: "mandelbrot_chunk_queue_task_id_idx_btree", algorithm: "btree", columns: [
+        "taskId"
+      ] }
+    ],
+    constraints: [
+      { name: "mandelbrot_chunk_queue_chunk_id_key", constraint: "unique", columns: ["chunkId"] }
+    ]
+  }, mandelbrot_chunk_queue_table_default),
   nodeStatus: table({
     name: "node_status",
     indexes: [
@@ -7981,6 +8009,9 @@ var tablesSchema = schema({
       ] },
       { accessor: "pin_chunk_queue_by_status", name: "pin_chunk_queue_status_idx_btree", algorithm: "btree", columns: [
         "status"
+      ] },
+      { accessor: "pin_chunk_queue_by_task_id", name: "pin_chunk_queue_task_id_idx_btree", algorithm: "btree", columns: [
+        "taskId"
       ] }
     ],
     constraints: [
@@ -7997,15 +8028,33 @@ var tablesSchema = schema({
     constraints: [
       { name: "pin_crack_config_id_key", constraint: "unique", columns: ["id"] }
     ]
-  }, pin_crack_config_table_default)
+  }, pin_crack_config_table_default),
+  task: table({
+    name: "task",
+    indexes: [
+      { accessor: "task_by_active", name: "task_is_active_idx_btree", algorithm: "btree", columns: [
+        "isActive"
+      ] },
+      { accessor: "task_by_request_help", name: "task_request_help_idx_btree", algorithm: "btree", columns: [
+        "requestHelp"
+      ] },
+      { accessor: "taskId", name: "task_task_id_idx_btree", algorithm: "btree", columns: [
+        "taskId"
+      ] }
+    ],
+    constraints: [
+      { name: "task_task_id_key", constraint: "unique", columns: ["taskId"] }
+    ]
+  }, task_table_default)
 });
 var reducersSchema = reducers(
   reducerSchema("heartbeat", heartbeat_reducer_default),
-  reducerSchema("request_pin_work", request_pin_work_reducer_default),
   reducerSchema("request_work", request_work_reducer_default),
   reducerSchema("reset_grid", reset_grid_reducer_default),
   reducerSchema("reset_pin_crack", reset_pin_crack_reducer_default),
-  reducerSchema("submit_pin_result", submit_pin_result_reducer_default),
+  reducerSchema("reset_task", reset_task_reducer_default),
+  reducerSchema("set_task_active", set_task_active_reducer_default),
+  reducerSchema("set_task_help", set_task_help_reducer_default),
   reducerSchema("submit_result", submit_result_reducer_default)
 );
 var proceduresSchema = procedures();

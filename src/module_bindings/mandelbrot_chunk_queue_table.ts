@@ -12,6 +12,7 @@ import {
 
 export default __t.row({
   chunkId: __t.u64().primaryKey().name("chunk_id"),
+  taskId: __t.u32().name("task_id"),
   status: __t.string(),
   assignedNode: __t.option(__t.identity()).name("assigned_node"),
   tileX: __t.u32().name("tile_x"),

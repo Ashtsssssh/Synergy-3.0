@@ -11,6 +11,7 @@ import {
 } from "spacetimedb";
 
 export default {
+  taskId: __t.u32(),
   chunkId: __t.u64(),
-  pixelData: __t.string(),
+  resultData: __t.option(__t.string()),
 };

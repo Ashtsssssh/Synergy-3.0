@@ -10,8 +10,25 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export const ChunkQueue = __t.object("ChunkQueue", {
+export const GridConfig = __t.object("GridConfig", {
+  id: __t.u32(),
+  taskId: __t.u32(),
+  cols: __t.u32(),
+  rows: __t.u32(),
+  maxIterations: __t.u32(),
+  reMin: __t.f64(),
+  reMax: __t.f64(),
+  imMin: __t.f64(),
+  imMax: __t.f64(),
+  imageWidth: __t.u32(),
+  imageHeight: __t.u32(),
+  updatedAtMicros: __t.u64(),
+});
+export type GridConfig = __Infer<typeof GridConfig>;
+
+export const MandelbrotChunkQueue = __t.object("MandelbrotChunkQueue", {
   chunkId: __t.u64(),
+  taskId: __t.u32(),
   status: __t.string(),
   assignedNode: __t.option(__t.identity()),
   tileX: __t.u32(),
@@ -26,22 +43,7 @@ export const ChunkQueue = __t.object("ChunkQueue", {
   pixelData: __t.option(__t.string()),
   updatedAtMicros: __t.u64(),
 });
-export type ChunkQueue = __Infer<typeof ChunkQueue>;
-
-export const GridConfig = __t.object("GridConfig", {
-  id: __t.u32(),
-  cols: __t.u32(),
-  rows: __t.u32(),
-  maxIterations: __t.u32(),
-  reMin: __t.f64(),
-  reMax: __t.f64(),
-  imMin: __t.f64(),
-  imMax: __t.f64(),
-  imageWidth: __t.u32(),
-  imageHeight: __t.u32(),
-  updatedAtMicros: __t.u64(),
-});
-export type GridConfig = __Infer<typeof GridConfig>;
+export type MandelbrotChunkQueue = __Infer<typeof MandelbrotChunkQueue>;
 
 export const NodeStatus = __t.object("NodeStatus", {
   nodeId: __t.identity(),
@@ -52,6 +54,7 @@ export type NodeStatus = __Infer<typeof NodeStatus>;
 
 export const PinChunkQueue = __t.object("PinChunkQueue", {
   chunkId: __t.u64(),
+  taskId: __t.u32(),
   status: __t.string(),
   assignedNode: __t.option(__t.identity()),
   rangeStart: __t.u32(),
@@ -65,6 +68,7 @@ export type PinChunkQueue = __Infer<typeof PinChunkQueue>;
 
 export const PinCrackConfig = __t.object("PinCrackConfig", {
   id: __t.u32(),
+  taskId: __t.u32(),
   pinLength: __t.u32(),
   targetHash: __t.string(),
   totalCandidates: __t.u32(),
@@ -76,4 +80,14 @@ export const PinCrackConfig = __t.object("PinCrackConfig", {
   updatedAtMicros: __t.u64(),
 });
 export type PinCrackConfig = __Infer<typeof PinCrackConfig>;
+
+export const Task = __t.object("Task", {
+  taskId: __t.u32(),
+  taskKey: __t.string(),
+  displayName: __t.string(),
+  isActive: __t.bool(),
+  requestHelp: __t.bool(),
+  updatedAtMicros: __t.u64(),
+});
+export type Task = __Infer<typeof Task>;
 

@@ -10,7 +10,11 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export default {
-  chunkId: __t.u64(),
-  foundPin: __t.option(__t.string()),
-};
+export default __t.row({
+  taskId: __t.u32().primaryKey().name("task_id"),
+  taskKey: __t.string().name("task_key"),
+  displayName: __t.string().name("display_name"),
+  isActive: __t.bool().name("is_active"),
+  requestHelp: __t.bool().name("request_help"),
+  updatedAtMicros: __t.u64().name("updated_at_micros"),
+});

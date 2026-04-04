@@ -10,4 +10,7 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export default {};
+export default {
+  taskId: __t.u32(),
+  requestHelp: __t.bool(),
+};

@@ -2,6 +2,10 @@ import { SenderError, schema, table, t } from 'spacetimedb/server';
 
 const IMAGE_WIDTH = 960;
 const IMAGE_HEIGHT = 960;
+
+const MANDELBROT_TASK_ID = 1;
+const PIN_TASK_ID = 2;
+
 const DEFAULT_GRID_COLS = 40;
 const DEFAULT_GRID_ROWS = 40;
 const DEFAULT_MAX_ITERATIONS = 1200;
@@ -9,22 +13,56 @@ const DEFAULT_RE_MIN = -2.2;
 const DEFAULT_RE_MAX = 1.2;
 const DEFAULT_IM_MIN = -1.6;
 const DEFAULT_IM_MAX = 1.6;
+
 const DEFAULT_PIN_LENGTH = 6;
 const DEFAULT_PIN_TOTAL_CANDIDATES = 1000000;
 const DEFAULT_PIN_CHUNK_SIZE = 10000;
+const MAX_INFLIGHT_CHUNKS_PER_NODE = 4;
 
-const ChunkQueue = table(
+const Task = table(
   {
-    name: 'chunk_queue',
+    name: 'task',
     public: true,
     indexes: [
       {
-        accessor: 'chunk_queue_by_status',
+        accessor: 'task_by_request_help',
+        algorithm: 'btree',
+        columns: ['requestHelp'],
+      },
+      {
+        accessor: 'task_by_active',
+        algorithm: 'btree',
+        columns: ['isActive'],
+      },
+    ],
+  },
+  {
+    taskId: t.u32().primaryKey(),
+    taskKey: t.string(),
+    displayName: t.string(),
+    isActive: t.bool(),
+    requestHelp: t.bool(),
+    updatedAtMicros: t.u64(),
+  }
+);
+
+const MandelbrotChunkQueue = table(
+  {
+    name: 'mandelbrot_chunk_queue',
+    public: true,
+    indexes: [
+      {
+        accessor: 'mandelbrot_chunk_queue_by_task_id',
+        algorithm: 'btree',
+        columns: ['taskId'],
+      },
+      {
+        accessor: 'mandelbrot_chunk_queue_by_status',
         algorithm: 'btree',
         columns: ['status'],
       },
       {
-        accessor: 'chunk_queue_by_assigned_node',
+        accessor: 'mandelbrot_chunk_queue_by_assigned_node',
         algorithm: 'btree',
         columns: ['assignedNode'],
       },
@@ -32,6 +70,7 @@ const ChunkQueue = table(
   },
   {
     chunkId: t.u64().primaryKey().autoInc(),
+    taskId: t.u32(),
     status: t.string(),
     assignedNode: t.identity().optional(),
     tileX: t.u32(),
@@ -44,6 +83,83 @@ const ChunkQueue = table(
     height: t.u32(),
     maxIterations: t.u32(),
     pixelData: t.string().optional(),
+    updatedAtMicros: t.u64(),
+  }
+);
+
+const PinChunkQueue = table(
+  {
+    name: 'pin_chunk_queue',
+    public: true,
+    indexes: [
+      {
+        accessor: 'pin_chunk_queue_by_task_id',
+        algorithm: 'btree',
+        columns: ['taskId'],
+      },
+      {
+        accessor: 'pin_chunk_queue_by_status',
+        algorithm: 'btree',
+        columns: ['status'],
+      },
+      {
+        accessor: 'pin_chunk_queue_by_assigned_node',
+        algorithm: 'btree',
+        columns: ['assignedNode'],
+      },
+    ],
+  },
+  {
+    chunkId: t.u64().primaryKey().autoInc(),
+    taskId: t.u32(),
+    status: t.string(),
+    assignedNode: t.identity().optional(),
+    rangeStart: t.u32(),
+    rangeEnd: t.u32(),
+    pinLength: t.u32(),
+    targetHash: t.string(),
+    foundPin: t.string().optional(),
+    updatedAtMicros: t.u64(),
+  }
+);
+
+const GridConfig = table(
+  {
+    name: 'grid_config',
+    public: true,
+  },
+  {
+    id: t.u32().primaryKey(),
+    taskId: t.u32(),
+    cols: t.u32(),
+    rows: t.u32(),
+    maxIterations: t.u32(),
+    reMin: t.f64(),
+    reMax: t.f64(),
+    imMin: t.f64(),
+    imMax: t.f64(),
+    imageWidth: t.u32(),
+    imageHeight: t.u32(),
+    updatedAtMicros: t.u64(),
+  }
+);
+
+const PinCrackConfig = table(
+  {
+    name: 'pin_crack_config',
+    public: true,
+  },
+  {
+    id: t.u32().primaryKey(),
+    taskId: t.u32(),
+    pinLength: t.u32(),
+    targetHash: t.string(),
+    totalCandidates: t.u32(),
+    chunkSize: t.u32(),
+    pinFound: t.string().optional(),
+    foundByNode: t.identity().optional(),
+    startedAtMicros: t.u64(),
+    foundAtMicros: t.u64().optional(),
     updatedAtMicros: t.u64(),
   }
 );
@@ -67,81 +183,13 @@ const NodeStatus = table(
   }
 );
 
-const PinChunkQueue = table(
-  {
-    name: 'pin_chunk_queue',
-    public: true,
-    indexes: [
-      {
-        accessor: 'pin_chunk_queue_by_status',
-        algorithm: 'btree',
-        columns: ['status'],
-      },
-      {
-        accessor: 'pin_chunk_queue_by_assigned_node',
-        algorithm: 'btree',
-        columns: ['assignedNode'],
-      },
-    ],
-  },
-  {
-    chunkId: t.u64().primaryKey().autoInc(),
-    status: t.string(),
-    assignedNode: t.identity().optional(),
-    rangeStart: t.u32(),
-    rangeEnd: t.u32(),
-    pinLength: t.u32(),
-    targetHash: t.string(),
-    foundPin: t.string().optional(),
-    updatedAtMicros: t.u64(),
-  }
-);
-
-const GridConfig = table(
-  {
-    name: 'grid_config',
-    public: true,
-  },
-  {
-    id: t.u32().primaryKey(),
-    cols: t.u32(),
-    rows: t.u32(),
-    maxIterations: t.u32(),
-    reMin: t.f64(),
-    reMax: t.f64(),
-    imMin: t.f64(),
-    imMax: t.f64(),
-    imageWidth: t.u32(),
-    imageHeight: t.u32(),
-    updatedAtMicros: t.u64(),
-  }
-);
-
-const PinCrackConfig = table(
-  {
-    name: 'pin_crack_config',
-    public: true,
-  },
-  {
-    id: t.u32().primaryKey(),
-    pinLength: t.u32(),
-    targetHash: t.string(),
-    totalCandidates: t.u32(),
-    chunkSize: t.u32(),
-    pinFound: t.string().optional(),
-    foundByNode: t.identity().optional(),
-    startedAtMicros: t.u64(),
-    foundAtMicros: t.u64().optional(),
-    updatedAtMicros: t.u64(),
-  }
-);
-
 const spacetimedb = schema({
-  chunkQueue: ChunkQueue,
-  nodeStatus: NodeStatus,
-  gridConfig: GridConfig,
+  task: Task,
+  mandelbrotChunkQueue: MandelbrotChunkQueue,
   pinChunkQueue: PinChunkQueue,
+  gridConfig: GridConfig,
   pinCrackConfig: PinCrackConfig,
+  nodeStatus: NodeStatus,
 });
 
 export default spacetimedb;
@@ -165,18 +213,70 @@ function markNodeAlive(ctx: any): void {
   });
 }
 
-function clearChunkQueue(ctx: any): void {
+function incrementDonatedCount(ctx: any): void {
+  const node = ctx.db.nodeStatus.nodeId.find(ctx.sender);
+  if (!node) {
+    ctx.db.nodeStatus.insert({
+      nodeId: ctx.sender,
+      donatedChunks: 1n,
+      lastSeenMicros: ctx.timestamp.microsSinceUnixEpoch,
+    });
+    return;
+  }
+
+  ctx.db.nodeStatus.nodeId.update({
+    ...node,
+    donatedChunks: node.donatedChunks + 1n,
+    lastSeenMicros: ctx.timestamp.microsSinceUnixEpoch,
+  });
+}
+
+function upsertTask(
+  ctx: any,
+  taskId: number,
+  taskKey: string,
+  displayName: string,
+  isActive: boolean,
+  requestHelp: boolean
+): void {
+  const existing = ctx.db.task.taskId.find(taskId);
+  const next = {
+    taskId,
+    taskKey,
+    displayName,
+    isActive,
+    requestHelp,
+    updatedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
+  };
+
+  if (existing) {
+    ctx.db.task.taskId.update(next);
+    return;
+  }
+
+  ctx.db.task.insert(next);
+}
+
+function getTaskOrThrow(ctx: any, taskId: number): any {
+  const task = ctx.db.task.taskId.find(taskId);
+  if (!task) {
+    throw new SenderError('Task does not exist.');
+  }
+  return task;
+}
+
+function clearMandelbrotChunks(ctx: any): void {
   const chunkIds: bigint[] = [];
-  for (const row of ctx.db.chunkQueue.iter()) {
+  for (const row of ctx.db.mandelbrotChunkQueue.iter()) {
     chunkIds.push(row.chunkId);
   }
 
   for (const chunkId of chunkIds) {
-    ctx.db.chunkQueue.chunkId.delete(chunkId);
+    ctx.db.mandelbrotChunkQueue.chunkId.delete(chunkId);
   }
 }
 
-function clearPinChunkQueue(ctx: any): void {
+function clearPinChunks(ctx: any): void {
   const chunkIds: bigint[] = [];
   for (const row of ctx.db.pinChunkQueue.iter()) {
     chunkIds.push(row.chunkId);
@@ -187,7 +287,7 @@ function clearPinChunkQueue(ctx: any): void {
   }
 }
 
-function seedChunkQueue(
+function seedMandelbrotChunks(
   ctx: any,
   config: {
     cols: number;
@@ -199,7 +299,7 @@ function seedChunkQueue(
     imMax: number;
   }
 ): void {
-  clearChunkQueue(ctx);
+  clearMandelbrotChunks(ctx);
 
   const tileWidth = Math.floor(IMAGE_WIDTH / config.cols);
   const tileHeight = Math.floor(IMAGE_HEIGHT / config.rows);
@@ -213,8 +313,9 @@ function seedChunkQueue(
       const chunkMaxIm = config.imMax - tileY * imStep;
       const chunkMinIm = chunkMaxIm - imStep;
 
-      ctx.db.chunkQueue.insert({
+      ctx.db.mandelbrotChunkQueue.insert({
         chunkId: 0n,
+        taskId: MANDELBROT_TASK_ID,
         status: 'pending',
         assignedNode: undefined,
         tileX,
@@ -233,7 +334,7 @@ function seedChunkQueue(
   }
 }
 
-function seedPinChunkQueue(
+function seedPinChunks(
   ctx: any,
   config: {
     targetHash: string;
@@ -242,7 +343,7 @@ function seedPinChunkQueue(
     pinLength: number;
   }
 ): void {
-  clearPinChunkQueue(ctx);
+  clearPinChunks(ctx);
 
   for (
     let rangeStart = 0;
@@ -256,6 +357,7 @@ function seedPinChunkQueue(
 
     ctx.db.pinChunkQueue.insert({
       chunkId: 0n,
+      taskId: PIN_TASK_ID,
       status: 'pending',
       assignedNode: undefined,
       rangeStart,
@@ -283,6 +385,7 @@ function upsertGridConfig(
   const existing = ctx.db.gridConfig.id.find(1);
   const next = {
     id: 1,
+    taskId: MANDELBROT_TASK_ID,
     cols: config.cols,
     rows: config.rows,
     maxIterations: config.maxIterations,
@@ -303,7 +406,7 @@ function upsertGridConfig(
   ctx.db.gridConfig.insert(next);
 }
 
-function upsertPinCrackConfig(
+function upsertPinConfig(
   ctx: any,
   config: {
     targetHash: string;
@@ -315,6 +418,7 @@ function upsertPinCrackConfig(
   const existing = ctx.db.pinCrackConfig.id.find(1);
   const next = {
     id: 1,
+    taskId: PIN_TASK_ID,
     pinLength: config.pinLength,
     targetHash: config.targetHash,
     totalCandidates: config.totalCandidates,
@@ -334,18 +438,114 @@ function upsertPinCrackConfig(
   ctx.db.pinCrackConfig.insert(next);
 }
 
-export const init = spacetimedb.init(ctx => {
-  let hasSeedData = false;
-  for (const _row of ctx.db.chunkQueue.iter()) {
-    hasSeedData = true;
-    break;
+function assignMandelbrotChunk(ctx: any): void {
+  let inFlightCount = 0;
+  for (const inFlight of ctx.db.mandelbrotChunkQueue.mandelbrot_chunk_queue_by_assigned_node.filter(
+    ctx.sender
+  )) {
+    if (inFlight.status === 'processing') {
+      inFlightCount += 1;
+      if (inFlightCount >= MAX_INFLIGHT_CHUNKS_PER_NODE) {
+        return;
+      }
+    }
   }
 
-  if (hasSeedData) {
+  for (const chunk of ctx.db.mandelbrotChunkQueue.mandelbrot_chunk_queue_by_status.filter('pending')) {
+    ctx.db.mandelbrotChunkQueue.chunkId.update({
+      ...chunk,
+      status: 'processing',
+      assignedNode: ctx.sender,
+      updatedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
+    });
+    return;
+  }
+}
+
+function assignPinChunk(ctx: any): void {
+  const pinConfig = ctx.db.pinCrackConfig.id.find(1);
+  if (pinConfig?.pinFound) {
     return;
   }
 
-  const defaultConfig = {
+  let inFlightCount = 0;
+  for (const inFlight of ctx.db.pinChunkQueue.pin_chunk_queue_by_assigned_node.filter(
+    ctx.sender
+  )) {
+    if (inFlight.status === 'processing') {
+      inFlightCount += 1;
+      if (inFlightCount >= MAX_INFLIGHT_CHUNKS_PER_NODE) {
+        return;
+      }
+    }
+  }
+
+  for (const chunk of ctx.db.pinChunkQueue.pin_chunk_queue_by_status.filter('pending')) {
+    ctx.db.pinChunkQueue.chunkId.update({
+      ...chunk,
+      status: 'processing',
+      assignedNode: ctx.sender,
+      updatedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
+    });
+    return;
+  }
+}
+
+function resetMandelbrotTaskToPending(ctx: any): void {
+  for (const chunk of ctx.db.mandelbrotChunkQueue.iter()) {
+    ctx.db.mandelbrotChunkQueue.chunkId.update({
+      ...chunk,
+      status: 'pending',
+      assignedNode: undefined,
+      pixelData: undefined,
+      updatedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
+    });
+  }
+}
+
+function resetPinTaskToPending(ctx: any): void {
+  for (const chunk of ctx.db.pinChunkQueue.iter()) {
+    ctx.db.pinChunkQueue.chunkId.update({
+      ...chunk,
+      status: 'pending',
+      assignedNode: undefined,
+      foundPin: undefined,
+      updatedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
+    });
+  }
+
+  const pinConfig = ctx.db.pinCrackConfig.id.find(1);
+  if (pinConfig) {
+    ctx.db.pinCrackConfig.id.update({
+      ...pinConfig,
+      pinFound: undefined,
+      foundByNode: undefined,
+      foundAtMicros: undefined,
+      startedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
+      updatedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
+    });
+  }
+}
+
+export const init = spacetimedb.init(ctx => {
+  upsertTask(
+    ctx,
+    MANDELBROT_TASK_ID,
+    'mandelbrot',
+    'Mandelbrot Rendering',
+    true,
+    true
+  );
+  upsertTask(
+    ctx,
+    PIN_TASK_ID,
+    'pin_guess',
+    'PIN Guessing',
+    true,
+    true
+  );
+
+  const defaultGrid = {
     cols: DEFAULT_GRID_COLS,
     rows: DEFAULT_GRID_ROWS,
     maxIterations: DEFAULT_MAX_ITERATIONS,
@@ -355,8 +555,35 @@ export const init = spacetimedb.init(ctx => {
     imMax: DEFAULT_IM_MAX,
   };
 
-  upsertGridConfig(ctx, defaultConfig);
-  seedChunkQueue(ctx, defaultConfig);
+  upsertGridConfig(ctx, defaultGrid);
+
+  let hasMandelbrotChunks = false;
+  for (const _row of ctx.db.mandelbrotChunkQueue.iter()) {
+    hasMandelbrotChunks = true;
+    break;
+  }
+  if (!hasMandelbrotChunks) {
+    seedMandelbrotChunks(ctx, defaultGrid);
+  }
+
+  const defaultPinConfig = {
+    targetHash:
+      '4ed8dfd7183bd310f609b89ed2c2e20edcaf0d2aadeb8b3668ab9bb52428874b',
+    totalCandidates: DEFAULT_PIN_TOTAL_CANDIDATES,
+    chunkSize: DEFAULT_PIN_CHUNK_SIZE,
+    pinLength: DEFAULT_PIN_LENGTH,
+  };
+
+  upsertPinConfig(ctx, defaultPinConfig);
+
+  let hasPinChunks = false;
+  for (const _row of ctx.db.pinChunkQueue.iter()) {
+    hasPinChunks = true;
+    break;
+  }
+  if (!hasPinChunks) {
+    seedPinChunks(ctx, defaultPinConfig);
+  }
 });
 
 export const onConnect = spacetimedb.clientConnected(_ctx => {
@@ -371,98 +598,156 @@ export const heartbeat = spacetimedb.reducer(ctx => {
   markNodeAlive(ctx);
 });
 
-export const request_work = spacetimedb.reducer(ctx => {
-  markNodeAlive(ctx);
-
-  for (const inFlight of ctx.db.chunkQueue.chunk_queue_by_assigned_node.filter(
-    ctx.sender
-  )) {
-    if (inFlight.status === 'processing') {
-      return;
-    }
-  }
-
-  for (const chunk of ctx.db.chunkQueue.chunk_queue_by_status.filter('pending')) {
-    ctx.db.chunkQueue.chunkId.update({
-      ...chunk,
-      status: 'processing',
-      assignedNode: ctx.sender,
+export const set_task_help = spacetimedb.reducer(
+  {
+    taskId: t.u32(),
+    requestHelp: t.bool(),
+  },
+  (ctx, { taskId, requestHelp }) => {
+    const task = getTaskOrThrow(ctx, taskId);
+    ctx.db.task.taskId.update({
+      ...task,
+      requestHelp,
       updatedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
     });
-    return;
   }
-});
+);
 
-export const request_pin_work = spacetimedb.reducer(ctx => {
-  markNodeAlive(ctx);
-
-  const pinConfig = ctx.db.pinCrackConfig.id.find(1);
-  if (pinConfig?.pinFound) {
-    return;
-  }
-
-  for (const inFlight of ctx.db.pinChunkQueue.pin_chunk_queue_by_assigned_node.filter(
-    ctx.sender
-  )) {
-    if (inFlight.status === 'processing') {
-      return;
-    }
-  }
-
-  for (const chunk of ctx.db.pinChunkQueue.pin_chunk_queue_by_status.filter('pending')) {
-    ctx.db.pinChunkQueue.chunkId.update({
-      ...chunk,
-      status: 'processing',
-      assignedNode: ctx.sender,
+export const set_task_active = spacetimedb.reducer(
+  {
+    taskId: t.u32(),
+    isActive: t.bool(),
+  },
+  (ctx, { taskId, isActive }) => {
+    const task = getTaskOrThrow(ctx, taskId);
+    ctx.db.task.taskId.update({
+      ...task,
+      isActive,
       updatedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
     });
-    return;
   }
-});
+);
+
+export const reset_task = spacetimedb.reducer(
+  {
+    taskId: t.u32(),
+  },
+  (ctx, { taskId }) => {
+    const task = getTaskOrThrow(ctx, taskId);
+
+    if (task.taskKey === 'mandelbrot') {
+      resetMandelbrotTaskToPending(ctx);
+      return;
+    }
+
+    if (task.taskKey === 'pin_guess') {
+      resetPinTaskToPending(ctx);
+      return;
+    }
+
+    throw new SenderError('Unsupported task type.');
+  }
+);
+
+export const request_work = spacetimedb.reducer(
+  {
+    taskId: t.u32(),
+  },
+  (ctx, { taskId }) => {
+    markNodeAlive(ctx);
+
+    const task = getTaskOrThrow(ctx, taskId);
+    if (!task.isActive || !task.requestHelp) {
+      return;
+    }
+
+    if (task.taskKey === 'mandelbrot') {
+      assignMandelbrotChunk(ctx);
+      return;
+    }
+
+    if (task.taskKey === 'pin_guess') {
+      assignPinChunk(ctx);
+      return;
+    }
+
+    throw new SenderError('Unsupported task type.');
+  }
+);
 
 export const submit_result = spacetimedb.reducer(
   {
+    taskId: t.u32(),
     chunkId: t.u64(),
-    pixelData: t.string(),
+    resultData: t.string().optional(),
   },
-  (ctx, { chunkId, pixelData }) => {
+  (ctx, { taskId, chunkId, resultData }) => {
     markNodeAlive(ctx);
 
-    const chunk = ctx.db.chunkQueue.chunkId.find(chunkId);
-    if (!chunk) {
-      throw new SenderError('Chunk does not exist.');
-    }
+    const task = getTaskOrThrow(ctx, taskId);
 
-    if (chunk.status !== 'processing') {
-      throw new SenderError('Chunk is not in processing state.');
-    }
+    if (task.taskKey === 'mandelbrot') {
+      if (!resultData) {
+        throw new SenderError('Mandelbrot resultData is required.');
+      }
 
-    if (!chunk.assignedNode || chunk.assignedNode.toHexString() !== ctx.sender.toHexString()) {
-      throw new SenderError('Chunk is assigned to another node.');
-    }
+      const chunk = ctx.db.mandelbrotChunkQueue.chunkId.find(chunkId);
+      if (!chunk) {
+        throw new SenderError('Chunk does not exist.');
+      }
+      if (chunk.status !== 'processing') {
+        throw new SenderError('Chunk is not in processing state.');
+      }
+      if (!chunk.assignedNode || chunk.assignedNode.toHexString() !== ctx.sender.toHexString()) {
+        throw new SenderError('Chunk is assigned to another node.');
+      }
 
-    ctx.db.chunkQueue.chunkId.update({
-      ...chunk,
-      status: 'completed',
-      pixelData,
-      updatedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
-    });
-
-    const node = ctx.db.nodeStatus.nodeId.find(ctx.sender);
-    if (!node) {
-      ctx.db.nodeStatus.insert({
-        nodeId: ctx.sender,
-        donatedChunks: 1n,
-        lastSeenMicros: ctx.timestamp.microsSinceUnixEpoch,
+      ctx.db.mandelbrotChunkQueue.chunkId.update({
+        ...chunk,
+        status: 'completed',
+        pixelData: resultData,
+        updatedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
       });
+      incrementDonatedCount(ctx);
       return;
     }
 
-    ctx.db.nodeStatus.nodeId.update({
-      ...node,
-      donatedChunks: node.donatedChunks + 1n,
-      lastSeenMicros: ctx.timestamp.microsSinceUnixEpoch,
-    });
+    if (task.taskKey === 'pin_guess') {
+      const chunk = ctx.db.pinChunkQueue.chunkId.find(chunkId);
+      if (!chunk) {
+        throw new SenderError('PIN chunk does not exist.');
+      }
+      if (chunk.status !== 'processing') {
+        throw new SenderError('PIN chunk is not in processing state.');
+      }
+      if (!chunk.assignedNode || chunk.assignedNode.toHexString() !== ctx.sender.toHexString()) {
+        throw new SenderError('PIN chunk is assigned to another node.');
+      }
+
+      const foundPin = resultData;
+      ctx.db.pinChunkQueue.chunkId.update({
+        ...chunk,
+        status: 'completed',
+        foundPin,
+        updatedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
+      });
+
+      const pinConfig = ctx.db.pinCrackConfig.id.find(1);
+      if (pinConfig && foundPin && !pinConfig.pinFound) {
+        ctx.db.pinCrackConfig.id.update({
+          ...pinConfig,
+          pinFound: foundPin,
+          foundByNode: ctx.sender,
+          foundAtMicros: ctx.timestamp.microsSinceUnixEpoch,
+          updatedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
+        });
+      }
+
+      incrementDonatedCount(ctx);
+      return;
+    }
+
+    throw new SenderError('Unsupported task type.');
   }
 );
 
@@ -480,15 +765,12 @@ export const reset_grid = spacetimedb.reducer(
     if (cols < 2 || rows < 2) {
       throw new SenderError('cols and rows must be >= 2');
     }
-
     if (cols > 200 || rows > 200) {
       throw new SenderError('cols and rows must be <= 200');
     }
-
     if (maxIterations < 100 || maxIterations > 10000) {
       throw new SenderError('maxIterations must be between 100 and 10000');
     }
-
     if (reMax <= reMin || imMax <= imMin) {
       throw new SenderError('Invalid complex plane bounds.');
     }
@@ -504,64 +786,7 @@ export const reset_grid = spacetimedb.reducer(
     };
 
     upsertGridConfig(ctx, nextConfig);
-    seedChunkQueue(ctx, nextConfig);
-  }
-);
-
-export const submit_pin_result = spacetimedb.reducer(
-  {
-    chunkId: t.u64(),
-    foundPin: t.string().optional(),
-  },
-  (ctx, { chunkId, foundPin }) => {
-    markNodeAlive(ctx);
-
-    const chunk = ctx.db.pinChunkQueue.chunkId.find(chunkId);
-    if (!chunk) {
-      throw new SenderError('PIN chunk does not exist.');
-    }
-
-    if (chunk.status !== 'processing') {
-      throw new SenderError('PIN chunk is not in processing state.');
-    }
-
-    if (!chunk.assignedNode || chunk.assignedNode.toHexString() !== ctx.sender.toHexString()) {
-      throw new SenderError('PIN chunk is assigned to another node.');
-    }
-
-    ctx.db.pinChunkQueue.chunkId.update({
-      ...chunk,
-      status: 'completed',
-      foundPin,
-      updatedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
-    });
-
-    const pinConfig = ctx.db.pinCrackConfig.id.find(1);
-    if (pinConfig && foundPin && !pinConfig.pinFound) {
-      ctx.db.pinCrackConfig.id.update({
-        ...pinConfig,
-        pinFound: foundPin,
-        foundByNode: ctx.sender,
-        foundAtMicros: ctx.timestamp.microsSinceUnixEpoch,
-        updatedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
-      });
-    }
-
-    const node = ctx.db.nodeStatus.nodeId.find(ctx.sender);
-    if (!node) {
-      ctx.db.nodeStatus.insert({
-        nodeId: ctx.sender,
-        donatedChunks: 1n,
-        lastSeenMicros: ctx.timestamp.microsSinceUnixEpoch,
-      });
-      return;
-    }
-
-    ctx.db.nodeStatus.nodeId.update({
-      ...node,
-      donatedChunks: node.donatedChunks + 1n,
-      lastSeenMicros: ctx.timestamp.microsSinceUnixEpoch,
-    });
+    seedMandelbrotChunks(ctx, nextConfig);
   }
 );
 
@@ -582,7 +807,7 @@ export const reset_pin_crack = spacetimedb.reducer(
       pinLength: DEFAULT_PIN_LENGTH,
     };
 
-    upsertPinCrackConfig(ctx, nextConfig);
-    seedPinChunkQueue(ctx, nextConfig);
+    upsertPinConfig(ctx, nextConfig);
+    seedPinChunks(ctx, nextConfig);
   }
 );

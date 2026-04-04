@@ -12,6 +12,7 @@ import {
 
 export default __t.row({
   id: __t.u32().primaryKey(),
+  taskId: __t.u32().name("task_id"),
   cols: __t.u32(),
   rows: __t.u32(),
   maxIterations: __t.u32().name("max_iterations"),

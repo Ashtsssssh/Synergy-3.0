@@ -12,6 +12,7 @@ import {
 
 export default __t.row({
   id: __t.u32().primaryKey(),
+  taskId: __t.u32().name("task_id"),
   pinLength: __t.u32().name("pin_length"),
   targetHash: __t.string().name("target_hash"),
   totalCandidates: __t.u32().name("total_candidates"),
