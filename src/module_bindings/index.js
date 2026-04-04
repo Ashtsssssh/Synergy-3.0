@@ -24,9 +24,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// Synergy-3.0/node_modules/base64-js/index.js
+// node_modules/base64-js/index.js
 var require_base64_js = __commonJS({
-  "Synergy-3.0/node_modules/base64-js/index.js"(exports) {
+  "node_modules/base64-js/index.js"(exports) {
     "use strict";
     exports.byteLength = byteLength;
     exports.toByteArray = toByteArray;
@@ -125,9 +125,9 @@ var require_base64_js = __commonJS({
   }
 });
 
-// Synergy-3.0/node_modules/safe-stable-stringify/index.js
+// node_modules/safe-stable-stringify/index.js
 var require_safe_stable_stringify = __commonJS({
-  "Synergy-3.0/node_modules/safe-stable-stringify/index.js"(exports, module) {
+  "node_modules/safe-stable-stringify/index.js"(exports, module) {
     "use strict";
     var { hasOwnProperty } = Object.prototype;
     var stringify3 = configure2();
@@ -721,15 +721,15 @@ ${originalIndentation}`;
   }
 });
 
-// Synergy-3.0/node_modules/spacetimedb/dist/index.browser.mjs
+// node_modules/spacetimedb/dist/index.browser.mjs
 var import_base64_js = __toESM(require_base64_js(), 1);
 
-// Synergy-3.0/node_modules/safe-stable-stringify/esm/wrapper.js
+// node_modules/safe-stable-stringify/esm/wrapper.js
 var import__ = __toESM(require_safe_stable_stringify(), 1);
 var configure = import__.default.configure;
 var stringify = import__.default;
 
-// Synergy-3.0/node_modules/spacetimedb/dist/index.browser.mjs
+// node_modules/spacetimedb/dist/index.browser.mjs
 var TimeDuration = class _TimeDuration {
   __time_duration_micros__;
   static MICROS_PER_MILLIS = 1000n;
@@ -2221,7 +2221,7 @@ var Result = {
     });
   }
 };
-var QueryBrand = /* @__PURE__ */ Symbol("QueryBrand");
+var QueryBrand = Symbol("QueryBrand");
 var isRowTypedQuery = (val) => !!val && typeof val === "object" && QueryBrand in val;
 function toSql(q) {
   return q.toSql();
@@ -3270,7 +3270,7 @@ var SumBuilderImpl = class extends TypeBuilder {
           configurable: false
         });
       } else {
-        const fn = ((value) => this.create(key, value));
+        const fn = (value) => this.create(key, value);
         Object.defineProperty(this, key, {
           value: fn,
           writable: false,
@@ -4390,7 +4390,7 @@ var RefBuilder = class extends TypeBuilder {
     this.ref = ref;
   }
 };
-var enumImpl = ((nameOrObj, maybeObj) => {
+var enumImpl = (nameOrObj, maybeObj) => {
   let obj = nameOrObj;
   let name = void 0;
   if (typeof nameOrObj === "string") {
@@ -4410,7 +4410,7 @@ var enumImpl = ((nameOrObj, maybeObj) => {
     return new SimpleSumBuilderImpl(simpleVariantsObj, name);
   }
   return new SumBuilder(obj, name);
-});
+};
 var t = {
   /**
    * Creates a new `Bool` {@link AlgebraicType} to be used in table definitions
@@ -4525,7 +4525,7 @@ var t = {
    * values must be {@link TypeBuilder}s.
    * @returns A new {@link ProductBuilder} instance.
    */
-  object: ((nameOrObj, maybeObj) => {
+  object: (nameOrObj, maybeObj) => {
     if (typeof nameOrObj === "string") {
       if (!maybeObj) {
         throw new TypeError(
@@ -4535,7 +4535,7 @@ var t = {
       return new ProductBuilder(maybeObj, nameOrObj);
     }
     return new ProductBuilder(nameOrObj, void 0);
-  }),
+  },
   /**
    * Creates a new `Row` {@link AlgebraicType} to be used in table definitions. Row types in SpacetimeDB
    * are similar to `Product` types, but are specifically used to define the schema of a table row.
@@ -4552,10 +4552,10 @@ var t = {
    * values must be {@link TypeBuilder}s or {@link ColumnBuilder}s.
    * @returns A new {@link RowBuilder} instance
    */
-  row: ((nameOrObj, maybeObj) => {
+  row: (nameOrObj, maybeObj) => {
     const [obj, name] = typeof nameOrObj === "string" ? [maybeObj, nameOrObj] : [nameOrObj, void 0];
     return new RowBuilder(obj, name);
-  }),
+  },
   /**
    * Creates a new `Array` {@link AlgebraicType} to be used in table definitions.
    * Represented as an array in TypeScript.
@@ -5882,7 +5882,7 @@ var DbConnectionBuilder = class {
     });
   }
 };
-var INTERNAL_REMOTE_MODULE = /* @__PURE__ */ Symbol("INTERNAL_REMOTE_MODULE");
+var INTERNAL_REMOTE_MODULE = Symbol("INTERNAL_REMOTE_MODULE");
 var SubscriptionBuilderImpl = class {
   constructor(db) {
     this.db = db;
@@ -7822,13 +7822,16 @@ function procedures(...args) {
   return { procedures: procedures2 };
 }
 
-// Synergy-3.0/src/module_bindings/heartbeat_reducer.ts
+// src/module_bindings/heartbeat_reducer.ts
 var heartbeat_reducer_default = {};
 
-// Synergy-3.0/src/module_bindings/request_work_reducer.ts
+// src/module_bindings/request_pin_work_reducer.ts
+var request_pin_work_reducer_default = {};
+
+// src/module_bindings/request_work_reducer.ts
 var request_work_reducer_default = {};
 
-// Synergy-3.0/src/module_bindings/reset_grid_reducer.ts
+// src/module_bindings/reset_grid_reducer.ts
 var reset_grid_reducer_default = {
   cols: t.u32(),
   rows: t.u32(),
@@ -7839,13 +7842,24 @@ var reset_grid_reducer_default = {
   imMax: t.f64()
 };
 
-// Synergy-3.0/src/module_bindings/submit_result_reducer.ts
+// src/module_bindings/reset_pin_crack_reducer.ts
+var reset_pin_crack_reducer_default = {
+  targetHash: t.string()
+};
+
+// src/module_bindings/submit_pin_result_reducer.ts
+var submit_pin_result_reducer_default = {
+  chunkId: t.u64(),
+  foundPin: t.option(t.string())
+};
+
+// src/module_bindings/submit_result_reducer.ts
 var submit_result_reducer_default = {
   chunkId: t.u64(),
   pixelData: t.string()
 };
 
-// Synergy-3.0/src/module_bindings/chunk_queue_table.ts
+// src/module_bindings/chunk_queue_table.ts
 var chunk_queue_table_default = t.row({
   chunkId: t.u64().primaryKey().name("chunk_id"),
   status: t.string(),
@@ -7863,7 +7877,7 @@ var chunk_queue_table_default = t.row({
   updatedAtMicros: t.u64().name("updated_at_micros")
 });
 
-// Synergy-3.0/src/module_bindings/grid_config_table.ts
+// src/module_bindings/grid_config_table.ts
 var grid_config_table_default = t.row({
   id: t.u32().primaryKey(),
   cols: t.u32(),
@@ -7878,14 +7892,41 @@ var grid_config_table_default = t.row({
   updatedAtMicros: t.u64().name("updated_at_micros")
 });
 
-// Synergy-3.0/src/module_bindings/node_status_table.ts
+// src/module_bindings/node_status_table.ts
 var node_status_table_default = t.row({
   nodeId: t.identity().primaryKey().name("node_id"),
   donatedChunks: t.u64().name("donated_chunks"),
   lastSeenMicros: t.u64().name("last_seen_micros")
 });
 
-// Synergy-3.0/src/module_bindings/index.ts
+// src/module_bindings/pin_chunk_queue_table.ts
+var pin_chunk_queue_table_default = t.row({
+  chunkId: t.u64().primaryKey().name("chunk_id"),
+  status: t.string(),
+  assignedNode: t.option(t.identity()).name("assigned_node"),
+  rangeStart: t.u32().name("range_start"),
+  rangeEnd: t.u32().name("range_end"),
+  pinLength: t.u32().name("pin_length"),
+  targetHash: t.string().name("target_hash"),
+  foundPin: t.option(t.string()).name("found_pin"),
+  updatedAtMicros: t.u64().name("updated_at_micros")
+});
+
+// src/module_bindings/pin_crack_config_table.ts
+var pin_crack_config_table_default = t.row({
+  id: t.u32().primaryKey(),
+  pinLength: t.u32().name("pin_length"),
+  targetHash: t.string().name("target_hash"),
+  totalCandidates: t.u32().name("total_candidates"),
+  chunkSize: t.u32().name("chunk_size"),
+  pinFound: t.option(t.string()).name("pin_found"),
+  foundByNode: t.option(t.identity()).name("found_by_node"),
+  startedAtMicros: t.u64().name("started_at_micros"),
+  foundAtMicros: t.option(t.u64()).name("found_at_micros"),
+  updatedAtMicros: t.u64().name("updated_at_micros")
+});
+
+// src/module_bindings/index.ts
 var tablesSchema = schema({
   chunkQueue: table({
     name: "chunk_queue",
@@ -7928,12 +7969,43 @@ var tablesSchema = schema({
     constraints: [
       { name: "node_status_node_id_key", constraint: "unique", columns: ["nodeId"] }
     ]
-  }, node_status_table_default)
+  }, node_status_table_default),
+  pinChunkQueue: table({
+    name: "pin_chunk_queue",
+    indexes: [
+      { accessor: "pin_chunk_queue_by_assigned_node", name: "pin_chunk_queue_assigned_node_idx_btree", algorithm: "btree", columns: [
+        "assignedNode"
+      ] },
+      { accessor: "chunkId", name: "pin_chunk_queue_chunk_id_idx_btree", algorithm: "btree", columns: [
+        "chunkId"
+      ] },
+      { accessor: "pin_chunk_queue_by_status", name: "pin_chunk_queue_status_idx_btree", algorithm: "btree", columns: [
+        "status"
+      ] }
+    ],
+    constraints: [
+      { name: "pin_chunk_queue_chunk_id_key", constraint: "unique", columns: ["chunkId"] }
+    ]
+  }, pin_chunk_queue_table_default),
+  pinCrackConfig: table({
+    name: "pin_crack_config",
+    indexes: [
+      { accessor: "id", name: "pin_crack_config_id_idx_btree", algorithm: "btree", columns: [
+        "id"
+      ] }
+    ],
+    constraints: [
+      { name: "pin_crack_config_id_key", constraint: "unique", columns: ["id"] }
+    ]
+  }, pin_crack_config_table_default)
 });
 var reducersSchema = reducers(
   reducerSchema("heartbeat", heartbeat_reducer_default),
+  reducerSchema("request_pin_work", request_pin_work_reducer_default),
   reducerSchema("request_work", request_work_reducer_default),
   reducerSchema("reset_grid", reset_grid_reducer_default),
+  reducerSchema("reset_pin_crack", reset_pin_crack_reducer_default),
+  reducerSchema("submit_pin_result", submit_pin_result_reducer_default),
   reducerSchema("submit_result", submit_result_reducer_default)
 );
 var proceduresSchema = procedures();

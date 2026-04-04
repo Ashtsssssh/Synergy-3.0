@@ -50,3 +50,30 @@ export const NodeStatus = __t.object("NodeStatus", {
 });
 export type NodeStatus = __Infer<typeof NodeStatus>;
 
+export const PinChunkQueue = __t.object("PinChunkQueue", {
+  chunkId: __t.u64(),
+  status: __t.string(),
+  assignedNode: __t.option(__t.identity()),
+  rangeStart: __t.u32(),
+  rangeEnd: __t.u32(),
+  pinLength: __t.u32(),
+  targetHash: __t.string(),
+  foundPin: __t.option(__t.string()),
+  updatedAtMicros: __t.u64(),
+});
+export type PinChunkQueue = __Infer<typeof PinChunkQueue>;
+
+export const PinCrackConfig = __t.object("PinCrackConfig", {
+  id: __t.u32(),
+  pinLength: __t.u32(),
+  targetHash: __t.string(),
+  totalCandidates: __t.u32(),
+  chunkSize: __t.u32(),
+  pinFound: __t.option(__t.string()),
+  foundByNode: __t.option(__t.identity()),
+  startedAtMicros: __t.u64(),
+  foundAtMicros: __t.option(__t.u64()),
+  updatedAtMicros: __t.u64(),
+});
+export type PinCrackConfig = __Infer<typeof PinCrackConfig>;
+

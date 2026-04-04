@@ -9,6 +9,9 @@ const DEFAULT_RE_MIN = -2.2;
 const DEFAULT_RE_MAX = 1.2;
 const DEFAULT_IM_MIN = -1.6;
 const DEFAULT_IM_MAX = 1.6;
+const DEFAULT_PIN_LENGTH = 6;
+const DEFAULT_PIN_TOTAL_CANDIDATES = 1000000;
+const DEFAULT_PIN_CHUNK_SIZE = 10000;
 
 const ChunkQueue = table(
   {
@@ -64,6 +67,36 @@ const NodeStatus = table(
   }
 );
 
+const PinChunkQueue = table(
+  {
+    name: 'pin_chunk_queue',
+    public: true,
+    indexes: [
+      {
+        accessor: 'pin_chunk_queue_by_status',
+        algorithm: 'btree',
+        columns: ['status'],
+      },
+      {
+        accessor: 'pin_chunk_queue_by_assigned_node',
+        algorithm: 'btree',
+        columns: ['assignedNode'],
+      },
+    ],
+  },
+  {
+    chunkId: t.u64().primaryKey().autoInc(),
+    status: t.string(),
+    assignedNode: t.identity().optional(),
+    rangeStart: t.u32(),
+    rangeEnd: t.u32(),
+    pinLength: t.u32(),
+    targetHash: t.string(),
+    foundPin: t.string().optional(),
+    updatedAtMicros: t.u64(),
+  }
+);
+
 const GridConfig = table(
   {
     name: 'grid_config',
@@ -84,10 +117,31 @@ const GridConfig = table(
   }
 );
 
+const PinCrackConfig = table(
+  {
+    name: 'pin_crack_config',
+    public: true,
+  },
+  {
+    id: t.u32().primaryKey(),
+    pinLength: t.u32(),
+    targetHash: t.string(),
+    totalCandidates: t.u32(),
+    chunkSize: t.u32(),
+    pinFound: t.string().optional(),
+    foundByNode: t.identity().optional(),
+    startedAtMicros: t.u64(),
+    foundAtMicros: t.u64().optional(),
+    updatedAtMicros: t.u64(),
+  }
+);
+
 const spacetimedb = schema({
   chunkQueue: ChunkQueue,
   nodeStatus: NodeStatus,
   gridConfig: GridConfig,
+  pinChunkQueue: PinChunkQueue,
+  pinCrackConfig: PinCrackConfig,
 });
 
 export default spacetimedb;
@@ -119,6 +173,17 @@ function clearChunkQueue(ctx: any): void {
 
   for (const chunkId of chunkIds) {
     ctx.db.chunkQueue.chunkId.delete(chunkId);
+  }
+}
+
+function clearPinChunkQueue(ctx: any): void {
+  const chunkIds: bigint[] = [];
+  for (const row of ctx.db.pinChunkQueue.iter()) {
+    chunkIds.push(row.chunkId);
+  }
+
+  for (const chunkId of chunkIds) {
+    ctx.db.pinChunkQueue.chunkId.delete(chunkId);
   }
 }
 
@@ -168,6 +233,41 @@ function seedChunkQueue(
   }
 }
 
+function seedPinChunkQueue(
+  ctx: any,
+  config: {
+    targetHash: string;
+    totalCandidates: number;
+    chunkSize: number;
+    pinLength: number;
+  }
+): void {
+  clearPinChunkQueue(ctx);
+
+  for (
+    let rangeStart = 0;
+    rangeStart < config.totalCandidates;
+    rangeStart += config.chunkSize
+  ) {
+    const rangeEnd = Math.min(
+      config.totalCandidates - 1,
+      rangeStart + config.chunkSize - 1
+    );
+
+    ctx.db.pinChunkQueue.insert({
+      chunkId: 0n,
+      status: 'pending',
+      assignedNode: undefined,
+      rangeStart,
+      rangeEnd,
+      pinLength: config.pinLength,
+      targetHash: config.targetHash,
+      foundPin: undefined,
+      updatedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
+    });
+  }
+}
+
 function upsertGridConfig(
   ctx: any,
   config: {
@@ -201,6 +301,37 @@ function upsertGridConfig(
   }
 
   ctx.db.gridConfig.insert(next);
+}
+
+function upsertPinCrackConfig(
+  ctx: any,
+  config: {
+    targetHash: string;
+    totalCandidates: number;
+    chunkSize: number;
+    pinLength: number;
+  }
+): void {
+  const existing = ctx.db.pinCrackConfig.id.find(1);
+  const next = {
+    id: 1,
+    pinLength: config.pinLength,
+    targetHash: config.targetHash,
+    totalCandidates: config.totalCandidates,
+    chunkSize: config.chunkSize,
+    pinFound: undefined,
+    foundByNode: undefined,
+    startedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
+    foundAtMicros: undefined,
+    updatedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
+  };
+
+  if (existing) {
+    ctx.db.pinCrackConfig.id.update(next);
+    return;
+  }
+
+  ctx.db.pinCrackConfig.insert(next);
 }
 
 export const init = spacetimedb.init(ctx => {
@@ -253,6 +384,33 @@ export const request_work = spacetimedb.reducer(ctx => {
 
   for (const chunk of ctx.db.chunkQueue.chunk_queue_by_status.filter('pending')) {
     ctx.db.chunkQueue.chunkId.update({
+      ...chunk,
+      status: 'processing',
+      assignedNode: ctx.sender,
+      updatedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
+    });
+    return;
+  }
+});
+
+export const request_pin_work = spacetimedb.reducer(ctx => {
+  markNodeAlive(ctx);
+
+  const pinConfig = ctx.db.pinCrackConfig.id.find(1);
+  if (pinConfig?.pinFound) {
+    return;
+  }
+
+  for (const inFlight of ctx.db.pinChunkQueue.pin_chunk_queue_by_assigned_node.filter(
+    ctx.sender
+  )) {
+    if (inFlight.status === 'processing') {
+      return;
+    }
+  }
+
+  for (const chunk of ctx.db.pinChunkQueue.pin_chunk_queue_by_status.filter('pending')) {
+    ctx.db.pinChunkQueue.chunkId.update({
       ...chunk,
       status: 'processing',
       assignedNode: ctx.sender,
@@ -347,5 +505,84 @@ export const reset_grid = spacetimedb.reducer(
 
     upsertGridConfig(ctx, nextConfig);
     seedChunkQueue(ctx, nextConfig);
+  }
+);
+
+export const submit_pin_result = spacetimedb.reducer(
+  {
+    chunkId: t.u64(),
+    foundPin: t.string().optional(),
+  },
+  (ctx, { chunkId, foundPin }) => {
+    markNodeAlive(ctx);
+
+    const chunk = ctx.db.pinChunkQueue.chunkId.find(chunkId);
+    if (!chunk) {
+      throw new SenderError('PIN chunk does not exist.');
+    }
+
+    if (chunk.status !== 'processing') {
+      throw new SenderError('PIN chunk is not in processing state.');
+    }
+
+    if (!chunk.assignedNode || chunk.assignedNode.toHexString() !== ctx.sender.toHexString()) {
+      throw new SenderError('PIN chunk is assigned to another node.');
+    }
+
+    ctx.db.pinChunkQueue.chunkId.update({
+      ...chunk,
+      status: 'completed',
+      foundPin,
+      updatedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
+    });
+
+    const pinConfig = ctx.db.pinCrackConfig.id.find(1);
+    if (pinConfig && foundPin && !pinConfig.pinFound) {
+      ctx.db.pinCrackConfig.id.update({
+        ...pinConfig,
+        pinFound: foundPin,
+        foundByNode: ctx.sender,
+        foundAtMicros: ctx.timestamp.microsSinceUnixEpoch,
+        updatedAtMicros: ctx.timestamp.microsSinceUnixEpoch,
+      });
+    }
+
+    const node = ctx.db.nodeStatus.nodeId.find(ctx.sender);
+    if (!node) {
+      ctx.db.nodeStatus.insert({
+        nodeId: ctx.sender,
+        donatedChunks: 1n,
+        lastSeenMicros: ctx.timestamp.microsSinceUnixEpoch,
+      });
+      return;
+    }
+
+    ctx.db.nodeStatus.nodeId.update({
+      ...node,
+      donatedChunks: node.donatedChunks + 1n,
+      lastSeenMicros: ctx.timestamp.microsSinceUnixEpoch,
+    });
+  }
+);
+
+export const reset_pin_crack = spacetimedb.reducer(
+  {
+    targetHash: t.string(),
+  },
+  (ctx, { targetHash }) => {
+    const normalizedHash = targetHash.trim().toLowerCase();
+    if (!/^[0-9a-f]{64}$/.test(normalizedHash)) {
+      throw new SenderError('targetHash must be a 64-char hex SHA-256 value.');
+    }
+
+    const nextConfig = {
+      targetHash: normalizedHash,
+      totalCandidates: DEFAULT_PIN_TOTAL_CANDIDATES,
+      chunkSize: DEFAULT_PIN_CHUNK_SIZE,
+      pinLength: DEFAULT_PIN_LENGTH,
+    };
+
+    upsertPinCrackConfig(ctx, nextConfig);
+    seedPinChunkQueue(ctx, nextConfig);
   }
 );

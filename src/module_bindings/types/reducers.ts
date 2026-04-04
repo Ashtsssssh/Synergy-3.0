@@ -7,12 +7,18 @@ import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
 import HeartbeatReducer from "../heartbeat_reducer";
+import RequestPinWorkReducer from "../request_pin_work_reducer";
 import RequestWorkReducer from "../request_work_reducer";
 import ResetGridReducer from "../reset_grid_reducer";
+import ResetPinCrackReducer from "../reset_pin_crack_reducer";
+import SubmitPinResultReducer from "../submit_pin_result_reducer";
 import SubmitResultReducer from "../submit_result_reducer";
 
 export type HeartbeatParams = __Infer<typeof HeartbeatReducer>;
+export type RequestPinWorkParams = __Infer<typeof RequestPinWorkReducer>;
 export type RequestWorkParams = __Infer<typeof RequestWorkReducer>;
 export type ResetGridParams = __Infer<typeof ResetGridReducer>;
+export type ResetPinCrackParams = __Infer<typeof ResetPinCrackReducer>;
+export type SubmitPinResultParams = __Infer<typeof SubmitPinResultReducer>;
 export type SubmitResultParams = __Infer<typeof SubmitResultReducer>;
 

@@ -135,7 +135,11 @@ worker.onmessage = event => {
 
 	if (type === 'worker-error') {
 		console.error('Worker error:', payload.message);
+		if (payload?.chunkId) {
+			activeChunkIds.delete(payload.chunkId.toString());
+		}
 		setStatus('Worker error. See console for details.');
+		maybeClaimWork();
 	}
 };
 
@@ -187,9 +191,7 @@ function connect() {
 					return;
 				}
 				sweepExistingAssignments();
-				if (activeChunkIds.size === 0) {
-					maybeClaimWork();
-				}
+				maybeClaimWork();
 			}, 1500);
 		})
 		.onDisconnect(() => {
@@ -226,8 +228,8 @@ resetGridButton.addEventListener('click', () => {
 		conn.reducers.resetGrid(RESET_GRID_DEFAULTS);
 		setStatus('reset_grid submitted.');
 	} catch (error) {
-		console.error('reset_grid failed:', error);
-		setStatus('reset_grid failed. Check console.');
+		console.error('reset action failed:', error);
+		setStatus('Reset action failed. Check console.');
 	}
 });
 

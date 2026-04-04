@@ -11,11 +11,5 @@ import {
 } from "spacetimedb";
 
 export default {
-  cols: __t.u32(),
-  rows: __t.u32(),
-  maxIterations: __t.u32(),
-  reMin: __t.f64(),
-  reMax: __t.f64(),
-  imMin: __t.f64(),
-  imMax: __t.f64(),
+  targetHash: __t.string(),
 };

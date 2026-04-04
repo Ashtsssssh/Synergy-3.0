@@ -118,6 +118,7 @@ self.onmessage = async event => {
 		self.postMessage({
 			type: 'worker-error',
 			payload: {
+				chunkId: payload?.chunkId,
 				message: error instanceof Error ? error.message : 'Unknown worker error',
 			},
 		});

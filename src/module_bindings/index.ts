@@ -35,8 +35,11 @@ import {
 
 // Import all reducer arg schemas
 import HeartbeatReducer from "./heartbeat_reducer";
+import RequestPinWorkReducer from "./request_pin_work_reducer";
 import RequestWorkReducer from "./request_work_reducer";
 import ResetGridReducer from "./reset_grid_reducer";
+import ResetPinCrackReducer from "./reset_pin_crack_reducer";
+import SubmitPinResultReducer from "./submit_pin_result_reducer";
 import SubmitResultReducer from "./submit_result_reducer";
 
 // Import all procedure arg schemas
@@ -45,6 +48,8 @@ import SubmitResultReducer from "./submit_result_reducer";
 import ChunkQueueRow from "./chunk_queue_table";
 import GridConfigRow from "./grid_config_table";
 import NodeStatusRow from "./node_status_table";
+import PinChunkQueueRow from "./pin_chunk_queue_table";
+import PinCrackConfigRow from "./pin_crack_config_table";
 
 /** Type-only namespace exports for generated type groups. */
 
@@ -92,13 +97,44 @@ const tablesSchema = __schema({
       { name: 'node_status_node_id_key', constraint: 'unique', columns: ['nodeId'] },
     ],
   }, NodeStatusRow),
+  pinChunkQueue: __table({
+    name: 'pin_chunk_queue',
+    indexes: [
+      { accessor: 'pin_chunk_queue_by_assigned_node', name: 'pin_chunk_queue_assigned_node_idx_btree', algorithm: 'btree', columns: [
+        'assignedNode',
+      ] },
+      { accessor: 'chunkId', name: 'pin_chunk_queue_chunk_id_idx_btree', algorithm: 'btree', columns: [
+        'chunkId',
+      ] },
+      { accessor: 'pin_chunk_queue_by_status', name: 'pin_chunk_queue_status_idx_btree', algorithm: 'btree', columns: [
+        'status',
+      ] },
+    ],
+    constraints: [
+      { name: 'pin_chunk_queue_chunk_id_key', constraint: 'unique', columns: ['chunkId'] },
+    ],
+  }, PinChunkQueueRow),
+  pinCrackConfig: __table({
+    name: 'pin_crack_config',
+    indexes: [
+      { accessor: 'id', name: 'pin_crack_config_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'pin_crack_config_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, PinCrackConfigRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
   __reducerSchema("heartbeat", HeartbeatReducer),
+  __reducerSchema("request_pin_work", RequestPinWorkReducer),
   __reducerSchema("request_work", RequestWorkReducer),
   __reducerSchema("reset_grid", ResetGridReducer),
+  __reducerSchema("reset_pin_crack", ResetPinCrackReducer),
+  __reducerSchema("submit_pin_result", SubmitPinResultReducer),
   __reducerSchema("submit_result", SubmitResultReducer),
 );
 
